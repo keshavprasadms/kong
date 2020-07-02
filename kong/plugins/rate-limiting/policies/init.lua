@@ -68,7 +68,7 @@ return {
       for period, period_date in pairs(periods) do
         if limits[period] then
           local cache_key = get_local_key(conf, identifier, period_date, period)
-          local newval, err = shm:incr(cache_key, value, 0)
+          local newval, err = shm:incr(cache_key, value, 0, EXPIRATIONS[period])
           if not newval then
             ngx_log(ngx.ERR, "[rate-limiting] could not increment counter ",
                              "for period '", period, "': ", err)
