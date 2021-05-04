@@ -127,7 +127,6 @@ local function validate_tag(tag)
   return true
 end
 
-
 local function validate_utf8_name(name)
 
   local ok, err = validate_utf8_string(name)
@@ -144,6 +143,22 @@ local function validate_utf8_name(name)
   return true
 end
 
+local function validate_workspace_name(name)
+
+  local ok, err = validate_utf8_name(name)
+  if not ok then
+    return nil, err
+  end
+
+  for _, value in ipairs(constants.CORE_ENTITIES) do
+    if name == value then
+      return nil, "invalid name: <" .. name ..
+       "> Reserved words can't be used as workspace names"
+    end
+  end
+
+  return true
+end
 
 local function validate_sni(host)
   local res, err_or_port = utils.normalize_ip(host)
@@ -376,6 +391,11 @@ typedefs.utf8_name = Schema.define {
   custom_validator = validate_utf8_name
 }
 
+typedefs.workspace_name = Schema.define {
+  type = "string",
+  unique = true,
+  custom_validator = validate_workspace_name
+}
 
 typedefs.sni = Schema.define {
   type = "string",
