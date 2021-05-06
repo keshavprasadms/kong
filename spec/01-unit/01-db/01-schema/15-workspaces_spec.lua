@@ -27,6 +27,19 @@ describe("workspaces schema", function()
       end
     end)
 
+    it("rejects reserved names", function()
+      local core_entities = require "kong.constants".CORE_ENTITIES
+      for i = 1, #core_entities do
+        local ok, err = Workspaces:validate({
+          name = core_entities[i],
+          config = {},
+          meta = {},
+        })
+        assert.falsy(ok)
+        assert.matches("invalid", err.name)
+      end
+    end)
+
     -- acceptance
     it("accepts valid names", function()
       local valid_names = {
