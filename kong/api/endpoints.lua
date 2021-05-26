@@ -235,16 +235,20 @@ local function query_entity(context, self, db, schema, method)
       end
     end
 
-    if key.id and not utils.is_valid_uuid(key.id) then
-      local endpoint_key = schema.endpoint_key
-      if endpoint_key then
-        local field = schema.fields[endpoint_key]
-        local inferred_value = arguments.infer_value(key.id, field)
-        if is_update then
-          return dao[method or context .. "_by_" .. endpoint_key](dao, inferred_value, args, opts)
-        end
+    local endpoint_key = schema.endpoint_key
+    if endpoint_key then
+      local field = schema.fields[endpoint_key]
+      local inferred_value = arguments.infer_value(key.id, field)
+      if is_update then
+        return dao[method or context .. "_by_" .. endpoint_key](dao, inferred_value, args, opts)
+      end
 
-        return dao[method or context .. "_by_" .. endpoint_key](dao, inferred_value, opts)
+      local entity, err, err_t = dao[method or context .. "_by_" .. endpoint_key](dao, inferred_value, opts)
+      if entity then
+        return entity
+      end
+      if err or not utils.is_valid_uuid(key.id) then
+        return nil, err, err_t
       end
     end
   end
