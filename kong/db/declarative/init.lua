@@ -96,9 +96,14 @@ function Config:parse_file(filename, accept, old_hash)
     error("filename must be a string", 2)
   end
 
-  local contents, err = pl_file.read(filename)
-  if not contents then
-    return nil, err
+  if filename:find("_format_version") ~= nil then
+    contents = filename
+    filename = "jack.json"
+  else
+    local contents, err = pl_file.read(filename)
+    if not contents then
+      return nil, err
+    end
   end
 
   return self:parse_string(contents, filename, accept, old_hash)
