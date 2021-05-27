@@ -140,6 +140,10 @@ local function do_authentication(conf)
   end
 
   if not jwt_secret then
+    jwt_secret.key = jwt.claims["iss"]
+  end
+
+  if not jwt_secret then
     return false, {status = 403, message = "No credentials found for given '" .. conf.key_claim_name .. "'"}
   end
 
