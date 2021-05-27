@@ -17,7 +17,7 @@ local config_cache = setmetatable({}, mt_cache)
 
 local RBACHandler = BasePlugin:extend()
 
-RBACHandler.PRIORITY = 951
+RBACHandler.PRIORITY = 949
 RBACHandler.VERSION = "0.1.0"
 
 function RBACHandler:new()
@@ -46,7 +46,7 @@ function RBACHandler:access(conf)
 
   -- get the consumer groups, since we need those as cache-keys to make sure
   -- we invalidate properly if they change
-  local consumer_groups, err = groups.get_consumer_groups(consumer_id)
+  local consumer_groups, err = groups.get_user_roles()
   if not consumer_groups then
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
   end
@@ -54,7 +54,7 @@ function RBACHandler:access(conf)
   -- 'to_be_blocked' is either 'true' if it's to be blocked, or the header
   -- value if it is to be passed
   local to_be_blocked = config.cache[consumer_groups]
-  if to_be_blocked == nil then
+  if to_be_blocked == nil then    
     local in_group = groups.consumer_in_groups(config.groups, consumer_groups)
 
     if config.type == BLACK then

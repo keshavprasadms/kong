@@ -1,66 +1,29 @@
-local singletons = require "kong.singletons"
 local pl_tablex = require "pl.tablex"
-
+local jwt_decoder = require "kong.plugins.jwt.jwt_parser"
 
 local EMPTY = pl_tablex.readonly {}
 
-
 local mt_cache = { __mode = "k" }
-local consumer_groups_cache = setmetatable({}, mt_cache)
 local consumer_in_groups_cache = setmetatable({}, mt_cache)
 
 
-local function load_groups_into_memory(consumer_id)
-  return singletons.dao.rbacs:find_all {consumer_id = consumer_id}
-end
+local function get_user_roles()
+  local groups = {}
+  local token = ngx.ctx.authenticated_jwt_token
+  local jwt = jwt_decoder:new(token)
+  local roles = jwt.claims["roles"]
 
-
---- Returns the database records with groups the consumer belongs to
--- @param conumer_id (string) the consumer for which to fetch the groups it belongs to
--- @return table with group records (empty table if none), or nil+error
-local function get_consumer_groups_raw(consumer_id)
-  local cache_key = singletons.dao.rbacs:cache_key(consumer_id)
-  local raw_groups, err = singletons.cache:get(cache_key, nil,
-                                               load_groups_into_memory,
-                                               consumer_id)
-  if err then
-    return nil, err
+  if not roles then
+    roles = {"PUBLIC"}
+  else
+    table.insert(roles, "PUBLIC")
   end
 
-  -- use EMPTY to be able to use it as a cache key, since a new table would
-  -- immediately be collected again and not allow for negative caching.
-  return raw_groups or EMPTY
-end
+  for i = 1, #roles do
+    local group = roles[i]
+    groups[group] = group
+  end 
 
-
---- Returns a table with all group names a consumer belongs to.
--- The table will have an array part to iterate over, and a hash part
--- where each group name is indexed by itself. Eg.
--- {
---   [1] = "users",
---   [2] = "admins",
---   users = "users",
---   admins = "admins",
--- }
--- If there are no groups defined, it will return an empty table
--- @param conumer_id (string) the consumer for which to fetch the groups it belongs to
--- @return table with groups (empty table if none) or nil+error
-local function get_consumer_groups(consumer_id)
-  local raw_groups, err = get_consumer_groups_raw(consumer_id)
-  if not raw_groups then
-    return nil, err
-  end
-
-  local groups = consumer_groups_cache[raw_groups]
-  if not groups then
-    groups = {}
-    consumer_groups_cache[raw_groups] = groups
-    for i = 1, #raw_groups do
-      local group = raw_groups[i].group
-      groups[i] = group
-      groups[group] = group
-    end
-  end
   return groups
 end
 
@@ -70,7 +33,7 @@ end
 -- results will be cached by this table, always use the same table for the
 -- same set of groups!
 -- @param consumer_groups (table) list of consumer groups (result from
--- `get_consumer_groups`)
+-- `get_user_roles`)
 -- @return (boolean) whether the consumer is part of any of the groups.
 local function consumer_in_groups(groups_to_check, consumer_groups)
   -- 1st level cache on "groups_to_check"
@@ -98,21 +61,6 @@ local function consumer_in_groups(groups_to_check, consumer_groups)
   return result2
 end
 
-
---- checks whether a consumer is part of the given list of groups
--- @param groups_to_check (table) an array of group names. Note: since the
--- results will be cached by this table, always use the same table for the
--- same set of groups!
--- @param consumer_id (string) id of consumer to verify
-local function consumer_id_in_groups(groups_to_check, consumer_id)
-  local consumer_groups, err = get_consumer_groups(consumer_id)
-  if not consumer_groups then
-    return nil, err
-  end
-  return consumer_in_groups(groups_to_check, consumer_groups)
-end
-
-
 --- Gets the currently identified consumer for the request.
 -- Checks both consumer and if not found the credentials.
 -- @return consumer_id (string), or alternatively `nil` if no consumer was
@@ -125,8 +73,7 @@ end
 
 
 return {
-  get_consumer_groups = get_consumer_groups,
+  get_user_roles = get_user_roles,
   consumer_in_groups = consumer_in_groups,
-  consumer_id_in_groups = consumer_id_in_groups,
   get_current_consumer_id = get_current_consumer_id,
 }
