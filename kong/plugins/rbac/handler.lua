@@ -2,7 +2,8 @@ local BasePlugin = require "kong.plugins.base_plugin"
 local responses = require "kong.tools.responses"
 local constants = require "kong.constants"
 local pl_tablex = require "pl.tablex"
-local groups = require "kong.plugins.rbac.groups"
+local parser = require "kong.plugins.rbac.parser"
+local roles = require "kong.plugins.rbac.roles"
 
 local table_concat = table.concat
 local set_header = ngx.req.set_header
@@ -37,7 +38,7 @@ function RBACHandler:access(conf)
   end
 
   -- get the consumer/credentials
-  local consumer_id = groups.get_current_consumer_id()
+  local consumer_id = parser.get_current_consumer_id()
   if not consumer_id then
     ngx_log(ngx_error, "[rbac plugin] Cannot identify the consumer, add an ",
                        "authentication plugin to use the RBAC plugin")
@@ -46,25 +47,16 @@ function RBACHandler:access(conf)
 
   -- get the consumer groups, since we need those as cache-keys to make sure
   -- we invalidate properly if they change
-  local consumer_groups, err = groups.get_user_roles()
-  if not consumer_groups.role then
+  local user_roles, err = parser.get_user_org_roles()
+  if not user_roles.role then
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
-  end
-
-  local body, err = kong.request.get_body()
-  if err then
-    kong.log.err("Cannot process request body: ", err)
-    return nil, { status = 400, message = "Cannot process request body" }
-  end
-  for k,v in pairs(body) do
-    print(k, v)
   end
 
   -- 'to_be_blocked' is either 'true' if it's to be blocked, or the header
   -- value if it is to be passed
-  local to_be_blocked = config.cache[consumer_groups.role]
+  local to_be_blocked = config.cache[user_roles.role]
   if to_be_blocked == nil then    
-    local in_group = groups.consumer_in_groups(config.groups, consumer_groups.role)
+    local in_group = roles.user_roles(config.groups, user_roles.role)
 
     if config.type == BLACK then
       to_be_blocked = in_group
@@ -76,11 +68,11 @@ function RBACHandler:access(conf)
       -- we're allowed, convert 'false' to the header value, if needed
       -- if not needed, set dummy value to save mem for potential long strings
       to_be_blocked = conf.hide_groups_header and "" 
-                      or table_concat(consumer_groups.role, ", ")
+                      or table_concat(user_roles.role, ", ")
     end
 
     -- update cache
-    config.cache[consumer_groups.role] = to_be_blocked
+    config.cache[user_roles.role] = to_be_blocked
   end
 
   if to_be_blocked == true then -- NOTE: we only catch the boolean here!
@@ -88,7 +80,7 @@ function RBACHandler:access(conf)
   end
 
   if not conf.hide_groups_header then
-    set_header(constants.HEADERS.CONSUMER_GROUPS, to_be_blocked)
+    set_header(constants.HEADERS.USER_ROLES, to_be_blocked)
   end
 end
 
