@@ -10,7 +10,6 @@ local function parse_json(json, json_temp_table)
           if type(value) == "table" then
             parse_json(value, json_temp_table)
           else
-            print(key,value)
             table.insert(json_temp_table, value)
           end
       end
@@ -35,12 +34,13 @@ local function parse_json(json, json_temp_table)
       return json_table
   end
 
-local function get_user_org_roles() 
-      local user_org_roles = {["orgId"] = {}, ["role"] = {}}
-      local json_table = {}
+local function token_roles_orgs() 
+--      local user_org_roles = {["orgId"] = {}, ["role"] = {}}
+--      local json_table = {}
       local token = ngx.ctx.authenticated_jwt_token
       local jwt = jwt_decoder:new(token)
---      local jwt_roles = jwt.claims.roles
+
+    --      local jwt_roles = jwt.claims.roles
     
     --   if not user_org_roles then
     --     user_org_roles["role"] = {"PUBLIC"}
@@ -75,6 +75,7 @@ local function get_user_org_roles()
         table.insert(roles,jwt.claims.roles[1][i].role)
     end
 
+
     local orgs = {}
       for i=1, #jwt.claims.roles[1] do
         orgs[i] = {}
@@ -104,6 +105,7 @@ local function get_user_org_roles()
       for i=1, #final_table1 do
         local key = final_table1[i]
         final_table1[key] = key
+        final_table1[i] = nil
       end
 
     for k,v in pairs(final_table1) do
@@ -125,7 +127,7 @@ local function get_current_consumer_id()
   
 
 return {
-    get_user_org_roles = get_user_org_roles,
+    token_roles_orgs = token_roles_orgs,
     get_current_consumer_id = get_current_consumer_id,
     parse_json = parse_json,
     parse_orgs_roles = parse_orgs_roles,

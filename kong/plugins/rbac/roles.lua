@@ -1,22 +1,19 @@
 local mt_cache = { __mode = "k" }
 local roles_cache = setmetatable({}, mt_cache)
 
-local function construct_map(roles_to_check, body_data, roles)
+local function construct_map(roles_to_check, body_data)
     local result_table = {}
     for key, value in pairs(roles_to_check) do
       for k, v in pairs(body_data) do
-          local role = value
-          print(value)
-          local org = v
-          print(v)
           table.insert(result_table, value .. "." .. v)
         end
     end
 
-    for i=1, #result_table do
-        local key = result_table[i]
-        result_table[key] = key
-    end
+    -- for i=1, #result_table do
+    --     local key = result_table[i]
+    --     result_table[key] = key
+    --     result_table[i] = nil
+    -- end
 
     for k,v in pairs(result_table) do
         print(k .. "/" .. v)
@@ -33,7 +30,7 @@ end
 -- `get_user_roles`)
 -- @return (boolean) whether the consumer is part of any of the groups.
 local function user_roles(roles_to_check, body_data, roles)
-    local result_table = construct_map(roles_to_check, body_data, roles)
+    local result_table = construct_map(roles_to_check, body_data)
     -- 1st level cache on "groups_to_check"
     local result1 = roles_cache[result_table]
     if result1 == nil then

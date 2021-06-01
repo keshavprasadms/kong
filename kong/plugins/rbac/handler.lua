@@ -59,7 +59,7 @@ function RBACHandler:access(conf)
 
   -- get the consumer groups, since we need those as cache-keys to make sure
   -- we invalidate properly if they change
-  local user_org_roles, err = parser.get_user_org_roles()
+  local user_org_roles, err = parser.token_roles_orgs()
 
   for k,v in pairs(user_org_roles) do
     print(k .. " " .. v)
@@ -75,9 +75,6 @@ function RBACHandler:access(conf)
   print(to_be_blocked)
 
   if to_be_blocked == nil then
-
-
-
     local in_roles = roles.user_roles(config.groups, body_data, user_org_roles)
 --    local in_orgs = orgs.user_orgs(user_org_roles, body_data)
 
