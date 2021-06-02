@@ -35,12 +35,12 @@ local function parse_json(json, json_temp_table)
   end
 
 local function token_roles_orgs() 
---      local user_org_roles = {["orgId"] = {}, ["role"] = {}}
+      local user_org_roles = {["orgId"] = {}, ["role"] = {}}
 --      local json_table = {}
       local token = ngx.ctx.authenticated_jwt_token
       local jwt = jwt_decoder:new(token)
 
-    --      local jwt_roles = jwt.claims.roles
+          local jwt_roles = jwt.claims.roles
     
     --   if not user_org_roles then
     --     user_org_roles["role"] = {"PUBLIC"}
@@ -55,12 +55,12 @@ local function token_roles_orgs()
     --       print(k,v)
     --   end
 
-    -- parse_orgs_roles(jwt_roles, user_org_roles)
-    -- print(jwt.claims.roles[1][1].role)
-    -- print(jwt.claims.roles[1][1].scope[1].orgId)
-    -- print(jwt.claims.roles[1][2].role)
-    -- print(jwt.claims.roles[1][2].scope[1].orgId)
-    -- print(jwt.claims.roles[1][2].scope[2].orgId)
+    parse_orgs_roles(jwt_roles, user_org_roles)
+    print(jwt.claims.roles[1].role)
+    print(jwt.claims.roles[2].role)
+    print(jwt.claims.roles[1].scope[1].orgId)
+    print(jwt.claims.roles[2].scope[1].orgId)
+    print(jwt.claims.roles[2].scope[2].orgId)
 
     --   local roles = {}
     --   for i=1, #jwt.claims.roles[1] do
@@ -71,48 +71,47 @@ local function token_roles_orgs()
     --   end
 
     local roles = {}
-    for i=1, #jwt.claims.roles[1] do
-        table.insert(roles,jwt.claims.roles[1][i].role)
+    for i=1, #jwt_roles do
+        table.insert(roles,jwt_roles[i].role)
     end
 
 
     local orgs = {}
-      for i=1, #jwt.claims.roles[1] do
+      for i=1, #jwt_roles do
         orgs[i] = {}
-        for j=1, #jwt.claims.roles[1][i].scope do
-            table.insert(orgs[i], jwt.claims.roles[1][i].scope[j].orgId)
+        for j=1, #jwt.claims.roles[i].scope do
+            table.insert(orgs[i], jwt.claims.roles[i].scope[j].orgId)
         end
       end
 
       local final_table = {}
-      local final_table1 = {}
       for i=1, #roles do
         for j=1, #orgs[i] do
           local role = roles[i]
           local org = orgs[i][j]
-          table.insert(final_table, {role, org})
-          table.insert(final_table1, role.. "." .. org)
+          --table.insert(final_table, {role, org})
+          table.insert(final_table, role.. "." .. org)
         end
     end
 
-    for i=1, #final_table do
-        for j=1, #final_table[i] do
-            print(final_table[i][j])
-        end
-    end
+    -- for i=1, #final_table do
+    --     for j=1, #final_table[i] do
+    --         print(final_table[i][j])
+    --     end
+    -- end
 
     --parse_orgs_roles(final_table)
-      for i=1, #final_table1 do
-        local key = final_table1[i]
-        final_table1[key] = key
-        final_table1[i] = nil
+      for i=1, #final_table do
+        local key = final_table[i]
+        final_table[key] = key
+        final_table[i] = nil
       end
 
-    for k,v in pairs(final_table1) do
+    for k,v in pairs(final_table) do
         print(k .. "/" ..v)
     end
 
-    return final_table1
+    return final_table
 end
 
 --- Gets the currently identified consumer for the request.
