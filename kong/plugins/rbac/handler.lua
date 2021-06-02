@@ -4,7 +4,6 @@ local constants = require "kong.constants"
 local pl_tablex = require "pl.tablex"
 local parser = require "kong.plugins.rbac.parser"
 local roles = require "kong.plugins.rbac.roles"
---local orgs = require "kong.plugins.rbac.orgs"
 
 local table_concat = table.concat
 local set_header = ngx.req.set_header
@@ -53,17 +52,9 @@ function RBACHandler:access(conf)
     body_data = parser.parse_json(body, body_data)
   end
 
-  for k,v in pairs(body_data) do
-    print(k .. " " .. v)
-  end
-
   -- get the consumer groups, since we need those as cache-keys to make sure
   -- we invalidate properly if they change
   local user_org_roles, err = parser.token_roles_orgs()
-
-  for k,v in pairs(user_org_roles) do
-    print(k .. " " .. v)
-  end
 
   if not user_org_roles then
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
@@ -72,16 +63,11 @@ function RBACHandler:access(conf)
   -- 'to_be_blocked' is either 'true' if it's to be blocked, or the header
   -- value if it is to be passed
   local to_be_blocked = config.cache[user_org_roles]
-  print(to_be_blocked)
 
   if to_be_blocked == nil then
     local in_roles = roles.user_roles(config.groups, body_data, user_org_roles)
---    local in_orgs = orgs.user_orgs(user_org_roles, body_data)
-
-    print(in_roles)
---    print(in_orgs)
     
-    to_be_blocked = not in_roles -- and not in_orgs
+    to_be_blocked = not in_roles
 
     if to_be_blocked == false then
       -- we're allowed, convert 'false' to the header value, if needed

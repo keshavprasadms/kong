@@ -3,20 +3,11 @@ local roles_cache = setmetatable({}, mt_cache)
 
 local function construct_map(roles_to_check, body_data)
     local result_table = {}
+    
     for key, value in pairs(roles_to_check) do
       for k, v in pairs(body_data) do
           table.insert(result_table, value .. "." .. v)
         end
-    end
-
-    -- for i=1, #result_table do
-    --     local key = result_table[i]
-    --     result_table[key] = key
-    --     result_table[i] = nil
-    -- end
-
-    for k,v in pairs(result_table) do
-        print(k .. "/" .. v)
     end
 
     return result_table
@@ -37,13 +28,13 @@ local function user_roles(roles_to_check, body_data, roles)
       result1 = setmetatable({}, mt_cache)
       roles_cache[result_table] = result1
     end
-  
+
     -- 2nd level cache on "consumer_groups"
     local result2 = result1[roles]
     if result2 ~= nil then
       return result2
     end
-  
+
     -- not found, so validate and populate 2nd level cache
     result2 = false
     for i = 1, #result_table do
@@ -60,35 +51,3 @@ return {
     user_roles = user_roles,
     construct_map = construct_map,
 }
-
--- result2 = false
--- local flag1 = false
--- local flag2 = false
--- for i = 1, #user_org_roles do
---    for j = 1, #user_org_roles[i] do
---       for k = 1, #roles_to_check do
---           if user_org_roles[i][j] == roles_to_check[k] then
---               print(user_org_roles[i][j])
---               print(roles_to_check[k])
---               flag1 = true
---               print(flag1)
---              break
---           end
---       end
---       for k = 1, #body_data do
---           if user_org_roles[i][j] == body_data[k] then
---               print(user_org_roles[i][j])
---               print(body_data[k])
---               flag2 = true
---               print(flag2)
---               break
---            end
---       end
---   end
--- end
--- if flag1 and flag2 then
---   result2 = true
--- end
--- result1[user_org_roles] = result2
--- return result2
--- end
