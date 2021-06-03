@@ -8,6 +8,7 @@ local orgs_cache = setmetatable({}, mt_cache)
 -- @param consumer_groups (table) list of consumer groups (result from
 -- `get_user_roles`)
 -- @return (boolean) whether the consumer is part of any of the groups.
+
 local function user_orgs(orgs_to_check, orgs)
   -- 1st level cache on "groups_to_check"
   local result1 = orgs_cache[orgs_to_check]

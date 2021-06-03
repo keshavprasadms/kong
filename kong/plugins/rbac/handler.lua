@@ -32,7 +32,10 @@ function RBACHandler:access(conf)
   if not config then
     config = {}
     config.type = WHITE
-    config.groups = conf.whitelist
+    config.roles = conf.whitelist
+    config.additionalchecks = conf.additionalchecks
+    config.checkin = conf.checkin
+    config.payloadfields = conf.payloadfields
     config.cache = setmetatable({}, mt_cache)
   end
 
@@ -44,17 +47,9 @@ function RBACHandler:access(conf)
     return responses.send_HTTP_FORBIDDEN("You cannot consume this service")
   end
 
-  local body_data = {}
-  local body, err = kong.request.get_body()
-  if err then
-    return nil, { status = 400, message = "Cannot process request body" }
-  else
-    body_data = parser.parse_json(body, body_data)
-  end
-
   -- get the consumer groups, since we need those as cache-keys to make sure
   -- we invalidate properly if they change
-  local user_org_roles, err = parser.token_roles_orgs()
+  local user_org_roles, err = parser.token_roles_orgs(config.additionalchecks)
 
   if not user_org_roles then
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
@@ -65,8 +60,28 @@ function RBACHandler:access(conf)
   local to_be_blocked = config.cache[user_org_roles]
 
   if to_be_blocked == nil then
-    local in_roles = roles.user_roles(config.groups, body_data, user_org_roles)
-    
+
+    local paylod_data = {}
+    if type(config.checkin) == "table" and type(config.payloadfields) == "table" then
+      for i=1, #config.checkin do
+        for j=1, #config.payloadfields do
+          if config.checkin[i] == 'body' then
+            local body, err = kong.request.get_body()
+            if not err then
+              paylod_data = parser.parse_json(body, paylod_data, config.payloadfields[j])
+            end
+          elseif config.checkin[i] == 'header' then
+            local header = kong.request.get_header(config.payloadfields[j])
+            if header ~= nil then
+              paylod_data[config.payloadfields[j]] = header
+            end
+          end
+        end
+      end
+    end
+
+    local in_roles = roles.user_roles(config.roles, paylod_data, user_org_roles)
+
     to_be_blocked = not in_roles
 
     if to_be_blocked == false then

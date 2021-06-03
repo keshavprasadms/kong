@@ -4,47 +4,72 @@ local EMPTY = pl_tablex.readonly {}
 
 local jwt_decoder = require "kong.plugins.jwt.jwt_parser"
 
-local function parse_json(json, json_temp_table)
+local function parse_json(json, json_temp_table, payloadfields)
     local json_temp_table = json_temp_table or {}
+    local payloadfields = payloadfields or ""
       for key,value in pairs(json) do
           if type(value) == "table" then
-            parse_json(value, json_temp_table)
-          else
-            table.insert(json_temp_table, value)
+            if payloadfields == key then
+              json_temp_table[key] = value[1]
+              break
+            else
+              parse_json(value, json_temp_table, payloadfields)
+            end
           end
       end
       local json_table = {}
       for key,value in pairs(json_temp_table) do
         json_table[value] = value
       end
-      return json_table
+      return json_temp_table
 end
 
-local function token_roles_orgs()
-  local user_org_roles = {["orgId"] = {}, ["role"] = {}}
+local function token_roles_orgs(additionalchecks)
   local token = ngx.ctx.authenticated_jwt_token
   local jwt = jwt_decoder:new(token)
   local jwt_roles = jwt.claims.roles
-  local roles = {}
 
-  for i=1, #jwt_roles do
-    table.insert(roles,jwt_roles[i].role)
+  local roles = {}
+  if jwt_roles then
+    for i=1, #jwt_roles do
+      table.insert(roles,jwt_roles[i].role)
+    end
   end
 
   local orgs = {}
-  for i=1, #jwt_roles do
-    orgs[i] = {}
-    for j=1, #jwt.claims.roles[i].scope do
-      table.insert(orgs[i], jwt.claims.roles[i].scope[j].orgId)
+  if type(additionalchecks) == "table" then
+    for i=1, #additionalchecks do
+      if additionalchecks[i] == 'orgcheck' then
+        for i=1, #jwt_roles do
+          orgs[i] = {}
+          for j=1, #jwt.claims.roles[i].scope do
+            table.insert(orgs[i], jwt.claims.roles[i].scope[j].orgId)
+          end
+        end
+      end
     end
   end
 
   local final_table = {}
-  for i=1, #roles do
-    for j=1, #orgs[i] do
+  if next(roles) then
+    for i=1, #roles do
       local role = roles[i]
-      local org = orgs[i][j]
-      table.insert(final_table, role.. "." .. org)
+      if next(orgs) then
+        for j=1, #orgs[i] do
+          local org = orgs[i][j]
+          table.insert(final_table, role .. "." .. org)
+        end
+      else
+        table.insert(final_table, role)
+      end
+    end
+  end
+
+  if type(additionalchecks) == "table" then
+    for i=1, #additionalchecks do
+      if additionalchecks[i] == 'ownercheck' then
+        table.insert(final_table, jwt.claims.userid)
+      end
     end
   end
 
